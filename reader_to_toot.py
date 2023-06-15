@@ -7,16 +7,14 @@ from mastodon import Mastodon
 WF_URL = "https://writefreely.istance/read" # writefreely istance reader address
 MST_URL = "https://mastondon.istance" # mastodon istance address
 MST_TOKEN = "<token>" # mastodon app token
-LR_PATH = "/path/last_run.txt" # file that store the last run
+LR_PATH = "/path/last_read.txt" # file that store the last scanned post datetime
 
-# save current execution datetime
-new_date = datetime.now()
-dt_string = new_date.strftime("%d/%m/%Y %H:%M:%S")
-
-# read last execution datetime
+# read last post scanned datetime
 f = open(LR_PATH)
 last_date_str = f.readline()
 last_date = datetime.strptime(last_date_str.strip(), "%d/%m/%Y %H:%M:%S")
+# set the new date equal to the last
+new_date = last_date
 
 # get the reader page
 page = requests.get(WF_URL)
@@ -48,6 +46,10 @@ for art in articles:
     # create the toot list
     # if the publish date is > the last script execution include the post in the toot
     if publish_date > last_date:
+         # set the new date if is lower than the publish date
+         # the posts are in desc cronological order so this if should always fire once, but...
+         if publish_date > new_date:
+            new_date = publish_date;
          if new_posts == 0:
              new_posts = 1
          new_text = '- ' + post_title + ' (' + author +')'
@@ -62,12 +64,12 @@ for art in articles:
          else:
             toot_list[index_toot] = toot_list[index_toot]+'\n'+new_text
 
-# if there's only one toot add the wf link
-if len(toot_list) == 1:
-    toot_list[0] = toot_list[0]+'\n\n' + WF_URL
-
-# send te toots
 if new_posts == 1:
+    # if there's only one toot add the wf link
+    if len(toot_list) == 1:
+        toot_list[0] = toot_list[0]+'\n\n' + WF_URL
+
+    # send te toots
     m = Mastodon(access_token=MST_TOKEN, api_base_url=MST_URL)
     reply_to = None
     for toot in toot_list:
@@ -76,6 +78,8 @@ if new_posts == 1:
         else: #if isn't the firs toot it's a reply to the previous and the visibility is unlisted to keep the feed clean
             reply_to = m.status_post (toot, visibility='unlisted', in_reply_to_id= reply_to.id)
 
-# write the execution datetime for the next run
-f = open(LR_PATH, "w")
-f.write(dt_string)
+# write the last post datetime for the next run
+if new_date != last_date:
+    dt_string = new_date.strftime("%d/%m/%Y %H:%M:%S")
+    f = open(LR_PATH, "w")
+    f.write(dt_string)
