@@ -33,11 +33,15 @@ new_posts = 0
 for art in articles:
     # get the post title
     title_element = art.find("h2", class_="p-name") # title of the post
-    body_element = art.find("div", class_="e-content preview").find("p").text[:50] # if the post doesn't have a title take the first 50 char of the body
-    if title_element is None: 
-        post_title = body_element.strip()
-    else:
-        post_title = title_element.find("a").text.strip()
+    # if the post doesn't have a title take the first 50 char of the body  
+    body_element = ""
+    temp_body_element = art.find("div", class_="e-content preview")
+    if temp_body_element is not None: 
+        if temp_body_element.find("p") is not None:
+            body_element = temp_body_element.find("p").text[:50]  
+    # if bot title and body are empty jump to next element
+    if title_element is None and body_element == "":
+        continue
     # get publish datetime
     publish_date_tmp = art.find("time", class_="dt-published")  
     publish_date = datetime.strptime(publish_date_tmp.get("content")[:19], "%Y-%m-%d %H:%M:%S")
